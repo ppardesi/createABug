@@ -25,8 +25,8 @@ function GetUrl() {
     return $areaUrl
 }
 
-$orgUrl = "{Your Organisation}"
-$personalToken = "{Your Personal Access Token - PAT}"
+$orgUrl = "https://dev.azure.com/ProjectName"
+$personalToken = "YOUR PERSONAL ACCESS TOKEN - PAT"
 
 Write-Host "Initialize authentication context" -ForegroundColor Yellow
 $token = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$($personalToken)"))
@@ -51,11 +51,11 @@ Write-Host "Getting list of Test Runs"  -ForegroundColor Green
 $projects.value  | ForEach-Object {
     $project = $_.name
     $testAreaId = "3b95fb80-fdda-4218-b60e-1052d070ae6b"
-    $testRunName = "JUnit_TestResults"
+    $testRunName = "JUnit_TestResults" # YOUR testRunName
     $tfsBaseUrl = GetUrl -orgUrl $orgUrl -header $header -AreaId $testAreaId
 
     #  https://docs.microsoft.com/en-us/rest/api/azure/devops/test/runs/list?view=azure-devops-rest-6.0
-    if ($project -eq "{Name of project}") {
+    if ($project -eq '{PROJECT_NAME}') {
         $testRunUrl = "$tfsBaseUrl/$project/_apis/test/runs?api-version=6.0"
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         $testRunResultsUri = Invoke-RestMethod -Uri $testRunUrl -Method Get -ContentType "application/json" -Headers $header
@@ -80,20 +80,20 @@ Write-Host "Getting passed/failed results from last run" -ForegroundColor Green
 $projects.value  | ForEach-Object {
     $project = $_.name
     $workTrackingAreaId = "85f8c7b6-92fe-4ba6-8b6d-fbb67c809341"
-    $workitemType = {"WorkItem Type as Bug"}
-    $Area = "{Your Project Area Path}"
-    $AssignedTo = "{Information of Assignee}"
+    $workitemType = "{Bug}"
+    $Area = "{AREA}"
+    $AssignedTo = "{AssignedTo}"
     $Reason = "{Reason}"
+    $tags = "{Automation}"
     $tfsBaseUrl = GetUrl -orgUrl $orgUrl -header $header -AreaId $testAreaId
     $tfsWorkTrackingItemUrl = GetUrl -orgUrl $orgUrl -header $header -AreaId $workTrackingAreaId
 
     # https://docs.microsoft.com/en-us/rest/api/azure/devops/test/results/list?view=azure-devops-rest-6.0
-    if ($project -eq "{Name of project}") {
+    if ($project -eq '{PROJECT_NAME}') {
         $testResultsRunUrl = "$tfsBaseUrl/$project/_apis/test/Runs/$lastRunId/results?api-version=6.0"
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         $lastTestSuiteResult = Invoke-RestMethod $testResultsRunUrl -Method Get -ContentType "application/json" -Headers $header
         $lastTestSuiteScenariosRunResults = $lastTestSuiteResult.value
-    
         if ($lastTestSuiteScenariosRunResults.Count -gt 0) {
             Write-Host "$lastTestName $($lastTestSuiteScenariosRunResults.count) test cases founds" -ForegroundColor Blue
             for ($i = 0; $i -lt $lastTestSuiteScenariosRunResults.Count; $i++) {
@@ -102,13 +102,16 @@ $projects.value  | ForEach-Object {
                     Write-Host "Creating bug for failed test case" -ForegroundColor Green
                     # https://docs.microsoft.com/en-us/rest/api/azure/devops/wit/work%20items/create?view=azure-devops-rest-6.0
                     $createBugWorkItemUrl = "$tfsWorkTrackingItemUrl/$project/_apis/wit/workitems/" + "$" + $workitemType + "?api-version=6.0"
+                    $resultID = $currentTestCase.id
+                    $bodyDesc = "Get full details of error message & stack trace on below link:" + "`n" + "https://baincapital.visualstudio.com/Bain%20Capital/_TestManagement/Runs?runId=" + $lastRunId + "&_a=resultSummary&resultId=" + $resultID + " "
                     $err = ""
-                    $errLen = $currentTestCase.errorMessage.Length
-                    if($errLen -gt 1000){
-                        $errLen = 1000
-                        $err = $currentTestCase.errorMessage.Replace('\', '\\').Substring(0, $errLen)
-                    }else{
-                        $err = $currentTestCase.errorMessage.Replace('\', '\\').Substring(0, $errLen)
+                    $errLen = $currentTestCase.stackTrace.Length
+                    if ($errLen -gt 1) {
+                        $err = $currentTestCase.stackTrace -replace '[^a-zA-Z0-9.]', ' '
+                    }
+                    else {
+                        Write-Host "Not enough content in stack trace"
+                        $err = $currentTestCase.stackTrace
                     }
                     $body = @"
                     [
@@ -135,13 +138,23 @@ $projects.value  | ForEach-Object {
                     {
                         "op": "add",
                         "path": "/fields/System.Description",
+                        "value": "$($bodyDesc)"
+                    },
+                    {
+                        "op": "add",
+                        "path": "/fields/Microsoft.VSTS.TCM.ReproSteps",
                         "value": "$($err)"
-                        }
-                    ] 
+                    },
+                    {
+                        "op": "add",
+                        "path": "/fields/System.Tags",
+                        "value": "$($tags)"
+                    }
+                ] 
 "@
                     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
                     $bugWorkItemURI = Invoke-RestMethod $createBugWorkItemUrl -Method POST -ContentType "application/json-patch+json" -Headers $header -Body $body
-                    Write-Host "Bug created for failed test case" $bugWorkItemURI.id - -ForegroundColor Blue
+                    Write-Host "Bug created for failed test case" $bugWorkItemURI.id -ForegroundColor Blue
                 }
             }
         }
