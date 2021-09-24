@@ -103,7 +103,7 @@ $projects.value  | ForEach-Object {
                     # https://docs.microsoft.com/en-us/rest/api/azure/devops/wit/work%20items/create?view=azure-devops-rest-6.0
                     $createBugWorkItemUrl = "$tfsWorkTrackingItemUrl/$project/_apis/wit/workitems/" + "$" + $workitemType + "?api-version=6.0"
                     $resultID = $currentTestCase.id
-                    $bodyDesc = "Get full details of error message & stack trace on below link:" + "`n" + "https://baincapital.visualstudio.com/Bain%20Capital/_TestManagement/Runs?runId=" + $lastRunId + "&_a=resultSummary&resultId=" + $resultID + " "
+                    $bodyDesc = "Get full details of error message & stack trace on below link:" + "`n" + "https://{project_url}/_TestManagement/Runs?runId=" + $lastRunId + "&_a=resultSummary&resultId=" + $resultID + " "
                     $err = ""
                     $errLen = $currentTestCase.stackTrace.Length
                     if ($errLen -gt 1) {
