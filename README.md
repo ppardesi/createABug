@@ -14,10 +14,12 @@ You need to add a powershell task for your agent, to run a powershell script aft
 1. Below variables you need to configure to run this script
     * $orgUrl = "{Your Organisation}" - "https://dev.azure.com/ProjectName"
     * $personalToken = "{Your Personal Access Token - PAT}"
+    * $testRunName = "{YOUR testRunName}"
 2. While creating a bug you need to input these fields as well
     * $workitemType = {"WorkItem Type as Bug"}
-    * $Area = "{Your Project Area Path}"
-    * $AssignedTo = "{Information of Assignee}"
-    * $Reason = "{Reason}"
+    * $Area = "{Your Project Area Path}" - String
+    * $AssignedTo = "{Information of Assignee}" - String
+    * $Reason = "{Reason}" - String
+    * $tags = "{Automation}" - String
     
 
